@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""
-Definition of filter_datum function that returns an obfuscated log message
-"""
+"""This module defines a logging mechanism for redacting sensitive information
+from log messages retrieved from a MySQL database."""
+
 from typing import List
-import re
-import logging
-import os
 import mysql.connector
+import logging
+import re
+import os
 
 
 PII_FIELDS = ('name', 'email', 'phone', 'ssn', 'password')
@@ -14,13 +14,16 @@ PII_FIELDS = ('name', 'email', 'phone', 'ssn', 'password')
 
 def filter_datum(fields: List[str], redaction: str,
                  message: str, separator: str) -> str:
-    """
-    Return an obfuscated log message
+    """Obfuscates sensitive data in a log message.
+
     Args:
-        fields (list): list of strings indicating fields to obfuscate
-        redaction (str): what the field will be obfuscated to
-        message (str): the log line to obfuscate
-        separator (str): the character separating the fields
+        fields (List[str]): List of strings indicating fields to obfuscate.
+        redaction (str): What the field will be obfuscated to.
+        message (str): The log line to obfuscate.
+        separator (str): The character separating the fields.
+
+    Returns:
+        str: The obfuscated log message.
     """
     for field in fields:
         message = re.sub(field+'=.*?'+separator,
@@ -29,24 +32,31 @@ def filter_datum(fields: List[str], redaction: str,
 
 
 class RedactingFormatter(logging.Formatter):
-    """ Redacting Formatter class
-        """
+    """Custom log formatter that redacts sensitive information from log
+    messages."""
 
     REDACTION = "***"
     FORMAT = "[HOLBERTON] %(name)s %(levelname)s %(asctime)-15s: %(message)s"
     SEPARATOR = ";"
 
     def __init__(self, fields: List[str]):
+        """Initialize the RedactingFormatter.
+
+        Args:
+            fields (List[str]): List of strings indicating fields to redact.
+        """
         super(RedactingFormatter, self).__init__(self.FORMAT)
         self.fields = fields
 
     def format(self, record: logging.LogRecord) -> str:
-        """
-        redact the message of LogRecord instance
+        """Redact the message of LogRecord instance.
+
         Args:
-        record (logging.LogRecord): LogRecord instance containing message
-        Return:
-            formatted string
+            record (logging.LogRecord): LogRecord instance containing the
+            message.
+
+        Returns:
+            str: Formatted and redacted log message.
         """
         message = super(RedactingFormatter, self).format(record)
         redacted = filter_datum(self.fields, self.REDACTION,
@@ -55,8 +65,11 @@ class RedactingFormatter(logging.Formatter):
 
 
 def get_logger() -> logging.Logger:
-    """
-    Return a logging.Logger object
+    """Returns a logging.Logger object configured to redact sensitive
+    information.
+
+    Returns:
+        logging.Logger: Logger object with the redacting formatter.
     """
     logger = logging.getLogger("user_data")
     logger.setLevel(logging.INFO)
@@ -72,22 +85,25 @@ def get_logger() -> logging.Logger:
 
 
 def get_db() -> mysql.connector.connection.MySQLConnection:
-    """
+    """Establish a connection to the MySQL database.
+
+    Returns:
+        mysql.connector.connection.MySQLConnection: Database connection.
     """
     user = os.getenv('PERSONAL_DATA_DB_USERNAME') or "root"
-    passwd = os.getenv('PERSONAL_DATA_DB_PASSWORD') or ""
+    password = os.getenv('PERSONAL_DATA_DB_PASSWORD') or ""
     host = os.getenv('PERSONAL_DATA_DB_HOST') or "localhost"
     db_name = os.getenv('PERSONAL_DATA_DB_NAME')
-    conn = mysql.connector.connect(user=user,
-                                   password=passwd,
-                                   host=host,
-                                   database=db_name)
-    return conn
+    connect = mysql.connector.connect(user=user,
+                                      password=password,
+                                      host=host,
+                                      database=db_name)
+    return connect
 
 
 def main():
-    """
-    main entry point
+    """Fetches user data from the database, format it as log messages,
+    and log the redacted messages using the configured logger.
     """
     db = get_db()
     logger = get_logger()
