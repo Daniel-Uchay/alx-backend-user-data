@@ -65,17 +65,25 @@ def logout():
     return redirect('/')
 
 
-@app.route('/profile', methods=['GET'], strict_slashes=False)
-def profile() -> str:
-    """GET /profile
-    Return 403 if session ID is invalid
-    Use session_id to find user
+@app.route('/sessions', methods=['DELETE'])
+def log_out() -> str:
+    """Find the user with the requested session ID.
+    If the user exists destroy the session and redirect the user to GET /.
+    If the user does not exist, respond with a 403 HTTP status.
     """
-    user_cookie = request.cookies.get("session_id", None)
-    user = AUTH.get_user_from_session_id(user_cookie)
-    if user_cookie is None or user is None:
+    session_id = request.cookies.get("session_id", None)
+
+    if session_id is None:
         abort(403)
-    return jsonify({"email": user}), 200
+
+    user = AUTH.get_user_from_session_id(session_id)
+
+    if user is None:
+        abort(403)
+
+    AUTH.destroy_session(user.id)
+
+    return redirect('/')
 
 
 @app.route('/reset_password', methods=['POST'], strict_slashes=False)
